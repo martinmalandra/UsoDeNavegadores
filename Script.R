@@ -14,8 +14,16 @@ navegadores_df <- read.csv("browser_stats.csv") %>%
          Año=year(Date)) %>%
   select(Año,Chrome,Edge,Firefox,Safari,Opera)
 
-
 navegadores_df_anual <- navegadores_df %>%
   group_by(Año) %>%
   summarise_at(vars(Chrome, Edge, Firefox, Safari, Opera), list(mean))
 
+navegadores_df_anual_pivot <- navegadores_df_anual %>% 
+  pivot_longer(cols = !Año)
+
+navegadores_df_anual_pivot <- navegadores_df_anual_pivot %>% 
+  rename(Navegador = name, Porcentaje = value)
+
+ggplot(navegadores_df_anual_pivot, aes(x=Año,y=Porcentaje,fill=Navegador)) +
+  geom_area(position = "fill")
+  
