@@ -1,0 +1,167 @@
+---
+title: ''
+output: html_document
+---
+
+# La guerra de los navegadores
+
+Algunas personas afirman que los navegadores web de la actualidad son como sistemas operativos dentro del mismo sistema operativo que utiliza nuestra computadora o teléfono, el cual puede ser Windows, Linux, Mac, iOS o Android.
+
+En buena parte esto es cierto ya que cada navegador no solo ofrece diferentes funcionalidades, sino que además procesa los sitios web con diferencias y puede ser personalizado con diferentes complementos (add-ons) que modifican en gran medida nuestra experiencia de navegación.
+
+Asimismo, algunos sitios ya funcionan como apps en sí mismas: se las conoce como web apps ya se ejecutan directamente desde el navegador. El detalle es que estas aplicaciones web se diseñan teniendo en mente un navegador en específico: el que más se usa en el mercado. La cuenta es sencilla.
+
+La cuota de mercado de navegadores marca la agenda tanto de quienes programan los navegadores en sí mismos, como de empresas que ofrecen servicios digitales y usuarios que buscan la mejor experiencia de uso para sus necesidades diarias.
+
+Es por eso que en este proyecto, trabajamos sobre los [datos](https://www.kaggle.com/datasets/mauryansshivam/web-browsers-usage-stats) disponibles más recientes en cuanto a uso de navegadores para explorar el panorama del internet de hoy. En gran medida, las respuestas no nos sorprenderán.
+
+# Preparación del entorno
+
+Los datos que utilizaremos fueron cargados en Kaggle por Shivam Maurya, y se encuentran disponibles tanto en el enlace anterior como en el [repositorio de GitHub](https://github.com/martinmalandra/UsoDeNavegadores) de este proyecto, junto con toda la documentación y código empleado.
+
+En esta ocasión, como es habitual, utilizaremos R Studio IDE, en conjunto con los paquetes Tidyverse, Lubridate y Hms para ordenar y limpiar la información.
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(hms)
+```
+
+Una vez seteado el entorno de trabajo, comenzamos a leer y explorar los datos.
+
+# Exploración y limpieza
+
+Daremos primero algunos vistazos mediante las funciones print() y str() sobre la lectura del archivo csv.
+
+```{r}
+print(read.csv("browser_stats.csv"))
+str(read.csv("browser_stats.csv"))
+```
+
+Como suele pasar, la fecha se encuentra formateada como texto y además se encuentra condensada en una sola celda.
+
+Teniendo una idea de como está presentada la información, lo que queremos es indagar en la evolución de la cuota de mercado y uso de los navegadores a lo largo del período registrado. Entre los años 2016 y lo que va del 2023.
+
+Para ello, lo primero que hay que hacer es formatear la fecha y separar el año en una columna aparte.
+
+```{r}
+navegadores_df <- read.csv("browser_stats.csv") %>% 
+  mutate(Date=dmy(Date),
+         Año=year(Date)) %>%
+  select(Año,Chrome,Edge,Firefox,Safari,Opera)
+```
+
+Luego agruparemos los promedios de cada año para simplificar la lectura de la tabla, haciendo:
+
+```{r}
+navegadores_df_anual <- navegadores_df %>%
+  group_by(Año) %>%
+  summarise_at(vars(Chrome, Edge, Firefox, Safari, Opera), list(mean))
+```
+
+```{r}
+as_tibble(navegadores_df_anual)
+```
+
+
+Seguidamente, traspondremos la tabla para poder realizar una visualización gráfica que refleje la variación de proporciones a lo largo del tiempo: esto se hace de manera clara mediante una gráfica de áreas apiladas.
+
+```{r}
+navegadores_df_anual_pivot <- navegadores_df_anual %>% 
+  pivot_longer(cols = !Año) %>% 
+  rename(Navegador = name, Porcentaje = value)
+```
+
+```{r}
+as_tibble(navegadores_df_anual_pivot)
+```
+
+
+# Gráficas y análisis
+
+Teniendo los datos listos, graficamos con:
+
+```{r}
+ggplot(navegadores_df_anual_pivot, aes(x=Año,y=Porcentaje,fill=Navegador)) +
+  geom_area(position = "fill") +
+  scale_fill_brewer(palette = "PuOr")
+```
+
+Vemos que el gran ganador a lo largo de un período de casi siete años ha sido Google Chrome, teniendo a casi un bestial 80% de usuarios de internet entre sus filas. 
+
+Edge, su homólogo en sabor Microsoft, fue perdiendo terreno frente a Chrome durante sus años pre-Chromium, es decir, antes de utilizar el mismo código fuente que su ahora pariente de Google, y luchando contra el eterno mal karma del ya desaparecido Internet Explorer. Esto parece haberse revertido a partir de enero del 2020 cuando Microsoft relanzó su navegador de bandera haciéndolo de base Chromium. Con lo cual ha ido ganando terreno no solo frente a usuarios de Google Chrome, sino también frente al tercero del podio, el tradicional Mozilla Firefox. Todo parece indicar que la tendencia va en aumento para el navegador por defecto de Windows, el cual acumula en la actualidad un 8.6% de los usuarios.
+
+No se puede decir lo mismo de Firefox con su 4,7%, el cual fue perdiendo terreno en dos frentes: en forma de nuevos usuarios de Edge y de nuevos usuarios de Opera, el cual, dicho sea de paso, también es un navegador de base Chromium y por ende, pariente directo tanto de Edge como de Chrome. 
+
+El hecho de esta merma en la base de usuarios de Firefox puede deberse a varios factores. Por un lado, el usuario medio de Firefox es alguien que frecuentemente valora la privacidad y es simpatizante del mundo open source y su comunidad; busca diferenciarse del resto y aprecia las posibilidades de personalización que ofrece este navegador. Es un tipo de usuario más bien minoritario frente a un público general que no tiene interés en meter mano en las configuraciones o la personalización del navegador. El otro factor que puede haber contribuido a esta merma es el hecho de que Firefox en el sistema operativo más popular, Windows, no la pasado muy bien en los últimos tiempos.
+
+Se dio a conocer hace poco la noticia de que el navegador de Mozilla [padecía un conflicto](https://www.genbeta.com/actualidad/nunca-tarde-parche-bueno-rendimiento-firefox-lleva-cinco-anos-lastrado-windows-defender) con el antivirus nativo Windows Defender, el cual multiplicaba el uso de recursos por cinco, ralentizando al navegador y empobreciendo la experiencia de uso. Esto estuvo sucediendo por lo bajo durante 5 años, y no fue sino hasta este año que dicho error pudo corregirse y gracias a eso, se logró que el uso de CPU se redujera un 75%. Funcionando como debería haberlo hecho todo este tiempo. ¿Recuperará Firefox terreno habiendo solucionado el problema? Es probable, pero no lo tiene fácil. 
+
+Como dijimos antes, tres de los cinco navegadores de este set de datos son de base Chromium. Y si hacemos la observación de proporciones entre navegadores Chromium versus los no Chromium veremos algo impactante:
+
+```{r}
+chr_v_nchr <- navegadores_df_23 %>% 
+  mutate(isChromium = case_when(
+    endsWith(Navegadores, "Chrome") ~ "Chromium",
+    endsWith(Navegadores, "Edge") ~ "Chromium",
+    endsWith(Navegadores, "Opera") ~ "Chromium",
+    endsWith(Navegadores, "Firefox") ~ "No Chromium",
+    endsWith(Navegadores, "Safari") ~ "No Chromium"
+  )) %>% 
+  mutate(isChromium=as.factor(isChromium))
+```
+
+```{r}
+chr_T <- chr_v_nchr %>%
+  group_by(isChromium) %>%
+  summarise(Freq = sum(Porcentaje)) %>% 
+  rename(Tipo=isChromium, Porcion=Freq)
+
+print(chr_T)
+```
+
+```{r}
+bp2 <- ggplot(chr_T, aes(x="", y=Freq, fill=isChromium))+
+  geom_bar(width = 1, stat = "identity")
+```
+
+```{r}
+pie2 <- bp2 + coord_polar("y", start=0)
+```
+
+```{r}
+pie2 + scale_fill_brewer(palette="Spectral") +
+  theme(axis.text.x = element_blank()) +
+  theme_void() +
+  labs(title="Cuota de uso de navegadores para abril de 2023", fill = "Tipo de navegador") +
+  geom_label(aes(label = Freq),
+             position = position_stack(vjust = 0.5),
+             show.legend = FALSE)
+```
+
+Solo en el set de datos estudiado, todo un abismal 90% de la cuota de mercado esta ocupada por navegadores de base Chromium, integrado por Opera, Chrome y Edge; y los únicos navegadores que no utilizan este código son Firefox y Safari, el navegador privativo de Apple.
+
+Con respecto a este último, se infiere que la cuota de mercado es baja por dos factores: por un lado, el navegador Safari es exclusivo en dispositivos Apple, no estando disponible en Android, Windows o Linux. Por otro lado, incluso en dispositivos Apple, es común el uso de navegadores alternativos. Podría ser de interés saber qué navegador se utiliza más en aparatos de esta marca, aunque en este estudio no contamos con dichos datos.
+
+# Cómo afecta todo esto a cada quien
+
+## Google Chrome
+Google puede descansar tranquilo por un largo tiempo. Su navegador sigue siendo el lider absoluto por goleada en todo el mundo a lo largo y ancho de los dispositivos más utilizados. Es el navegador por defecto de los celulares Android y el que la mayoría de las personas instalan en sus computadoras. Y el hecho de que esté directamente conectado a su ecosistema reafirma que el motivo principal por el cual lo eligen los usuarios es simple: practicidad, conveniencia y sincronicidad, incorporadas a un nivel habitual tan profundo que será muy difícil de derrotar al menos por ahora.
+
+## Microsoft Edge
+Microsoft y su navegador Edge vienen dando batalla desde abajo, aunque en la dirección correcta. O al menos eso nos dicen los datos. El cambio a Chromium le ha sentado muy bien y de a poco sigue seduciendo tanto a usuarios desencantados con el rendimiento previo de Firefox, como a los aburridos de Chrome. El punto flojo de Microsoft, quizás, es su ecosistema, que palidece frente al cada vez más presente Google. El lanzamiento de Windows 11 ayudó sumar usuarios de Edge a las filas, pero queda un largo camino para captar usuarios nuevos.
+
+## Firefox
+Firefox por su parte, rompió una barrera técnica importante este año al desaznar ese conflicto en Windows. En la actualidad se presenta como un navegador de alternativa sólido, personalizable y privado, pensado para un nicho de usuarios particulares: conocedores de la tecnología. Si bien la cuota de uso es baja, es de esperar que no baje de allí debido al importante núcleo de usuarios que existe en la comunidad Linux, donde Firefox es el navegador por defecto y donde verdaderamente muestra sus virtudes. Uno de los desafíos que enfrenta Mozilla es salir de ese nicho y llegar al público general. Pero lo más difícil será estar a la par de Chrome en cuanto a compatibilidad, ya que no son pocos los sitios y aplicaciones web que no funcionan en Firefox.
+
+## Safari
+Safari, por lo pronto, seguirá siendo el navegador de bandera de los dispositivos Apple, preservando el valor de exclusividad que celosamente Apple tiene para con todos sus productos y servicios. Con los años su ecosistema se fue haciendo cada vez más restrictivo y todo indica que no saldrán de ese nicho de usuarios que, por lo general, se mantienen fieles a la marca, aunque con libertades. Es muy común que Chrome siga siendo instalado en iPhones, iPads y Macs, así que en lo cercano, la tarea de Apple será "cuidar su huerto".
+
+## Opera
+Por último, Opera, muestra una tendencia de crecimiento presentandose como "la novedad" y ofreciendo algunas alternativas como Opera GX. El navegador "gamer" que cuenta con algunas opciones de personalización estética interesantes, además de otras carácterísticas curiosas como música relajante de fondo y pestañas verticales de aplicaciones de mensajería. Solo por mencionar algunos aspectos. Veremos si este gran lavado de cara les dará resultado para crecer, o quedará relegado a un nicho todavía bastante chico entre los usuarios.
+
+## Programadores
+
+Con todo esto no es de extrañar que una buena parte de los sitios se sigan desarrollando con Chrome en mente, el cual ya es prácticamente un estándar. No obstante, la buena práctica indica que un buen sitio web funciona sin problemas en cualquier dispositivo. Y aunque la cuota de mercado de usuarios siga siendo diversa, la compatibilidad es un must en cualquier escenario.
+
+En el fondo se trata de un ciclo retroalimentativo donde las apps y sitios disponibles se diseñan para el navegador que más se usa, y el usuario tiene que ir al navegador que más se usa para usar las apps y sitios que necesita.
