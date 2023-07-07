@@ -97,7 +97,21 @@ El hecho de esta merma en la base de usuarios de Firefox puede deberse a varios 
 
 Se dio a conocer hace poco la noticia de que el navegador de Mozilla [padecía un conflicto](https://www.genbeta.com/actualidad/nunca-tarde-parche-bueno-rendimiento-firefox-lleva-cinco-anos-lastrado-windows-defender) con el antivirus nativo Windows Defender, el cual multiplicaba el uso de recursos por cinco, ralentizando al navegador y empobreciendo la experiencia de uso. Esto estuvo sucediendo por lo bajo durante 5 años, y no fue sino hasta este año que dicho error pudo corregirse y gracias a eso, se logró que el uso de CPU se redujera un 75%. Funcionando como debería haberlo hecho todo este tiempo. ¿Recuperará Firefox terreno habiendo solucionado el problema? Es probable, pero no lo tiene fácil. 
 
-Como dijimos antes, tres de los cinco navegadores de este set de datos son de base Chromium. Y si hacemos la observación de proporciones entre navegadores Chromium versus los no Chromium veremos algo impactante:
+Como dijimos antes, tres de los cinco navegadores de este set de datos son de base Chromium. Y si hacemos la observación de proporciones entre navegadores Chromium versus los no Chromium veremos algo impactante...
+
+Para esto, agruparemos los datos del 2023 a partir del dataset original.
+
+```{r}
+navegadores_df_23 <- navegadores_df %>% 
+  filter(Año == 2023) %>% 
+  group_by(Año) %>%
+  summarise_at(vars(Chrome, Edge, Firefox, Safari, Opera), list(mean)) %>% 
+  pivot_longer(cols = !Año) %>% 
+  rename(Navegadores=name,Porcentaje=value) %>% 
+  mutate(Porcentaje=Porcentaje*100)
+```
+
+Y luego agruparemos los navegadores "Chromium" versus los "No Chromium".
 
 ```{r}
 chr_v_nchr <- navegadores_df_23 %>% 
@@ -121,7 +135,7 @@ print(chr_T)
 ```
 
 ```{r}
-bp2 <- ggplot(chr_T, aes(x="", y=Freq, fill=isChromium))+
+bp2 <- ggplot(chr_T, aes(x="", y=Porcion, fill=Tipo))+
   geom_bar(width = 1, stat = "identity")
 ```
 
@@ -134,7 +148,7 @@ pie2 + scale_fill_brewer(palette="Spectral") +
   theme(axis.text.x = element_blank()) +
   theme_void() +
   labs(title="Cuota de uso de navegadores para abril de 2023", fill = "Tipo de navegador") +
-  geom_label(aes(label = Freq),
+  geom_label(aes(label = Porcion),
              position = position_stack(vjust = 0.5),
              show.legend = FALSE)
 ```
